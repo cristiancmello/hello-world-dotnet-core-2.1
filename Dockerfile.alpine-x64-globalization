@@ -1,0 +1,34 @@
+FROM mcr.microsoft.com/dotnet/core/sdk:2.1-alpine AS build
+WORKDIR /app
+
+# copy csproj and restore as distinct layers
+COPY *.csproj .
+WORKDIR /app
+RUN dotnet restore
+
+
+# copy and publish app and libraries
+WORKDIR /app
+COPY . .
+RUN dotnet publish -c Release -o out
+
+
+# FROM build AS testrunner
+# WORKDIR /app/tests
+# COPY tests/. .
+# ENTRYPOINT ["dotnet", "test", "--logger:trx"]
+
+
+# prepare runtime as entrypoint
+FROM mcr.microsoft.com/dotnet/core/runtime:2.1-alpine AS runtime
+
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT false
+RUN apk add --no-cache icu-libs
+
+ENV LC_ALL en_US.UTF-8
+ENV LANG en_US.UTF-8
+
+WORKDIR /app
+COPY --from=build /app/out ./
+
+ENTRYPOINT ["dotnet", "helloWorld.dll"]
